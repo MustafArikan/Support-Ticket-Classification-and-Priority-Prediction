@@ -115,13 +115,13 @@ support-ticket-classifier/
 ### Phase 0 — Setup and Environment
 **Duration:** 2-3 days
 
-- [ ] Create the GitHub repo, set up the folder structure
-- [ ] Set up a Python virtual environment / conda env
-- [ ] Install Docker Desktop, confirm it works (`docker run hello-world`)
-- [ ] Install Minikube or Kind (local K8s cluster)
+- [x] Create the GitHub repo, set up the folder structure
+- [x] Set up a Python virtual environment / conda env
+- [x] Install Docker Desktop, confirm it works (`docker run hello-world`)
+- [x] Install Minikube or Kind (local K8s cluster)
 - [ ] Run MLflow locally, access the UI (`mlflow ui`)
-- [ ] Draft `requirements.txt`
-- [ ] Write a README.md skeleton (project goal, setup instructions)
+- [x] Draft `requirements.txt`
+- [x] Write a README.md skeleton (project goal, setup instructions)
 
 **Output:** A working dev environment, an empty but structured repo.
 
@@ -131,7 +131,7 @@ support-ticket-classifier/
 **Duration:** 3-5 days
 
 - [ ] Literature review: similar support ticket classification work (2-3 papers/blog posts)
-- [ ] Pick a data source:
+- [x] Pick a data source:
   - Ready-made "customer support ticket" datasets on Kaggle (English)
   - For Turkish: synthetic data generation (LLM-generated ticket samples) blended with real examples
   - Multilingual approach: combine an English dataset with Turkish synthetic data
