@@ -119,7 +119,7 @@ support-ticket-classifier/
 - [x] Set up a Python virtual environment / conda env
 - [x] Install Docker Desktop, confirm it works (`docker run hello-world`)
 - [x] Install Minikube or Kind (local K8s cluster)
-- [ ] Run MLflow locally, access the UI (`mlflow ui`)
+- [x] Run MLflow locally, access the UI (`mlflow ui`)
 - [x] Draft `requirements.txt`
 - [x] Write a README.md skeleton (project goal, setup instructions)
 
