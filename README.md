@@ -135,11 +135,11 @@ support-ticket-classifier/
   - Ready-made "customer support ticket" datasets on Kaggle (English)
   - For Turkish: synthetic data generation (LLM-generated ticket samples) blended with real examples
   - Multilingual approach: combine an English dataset with Turkish synthetic data
-- [ ] Finalize the label schema:
+- [x] Finalize the label schema:
   - Category: Technical Issue, Billing, Refund, Account Management, General Inquiry (5 classes recommended — more adds unnecessary complexity)
   - Priority: Low, Medium, High, Critical (4 levels)
-- [ ] Write a data schema document (column names, types, expected value ranges)
-- [ ] Add basic schema validation in `data_validation.py` (e.g. pandera or great_expectations)
+- [x] Write a data schema document (column names, types, expected value ranges)
+- [x] Add basic schema validation in `data_validation.py` (e.g. pandera or great_expectations)
 
 **Output:** `data/raw/tickets.csv`, a data dictionary document.
 
