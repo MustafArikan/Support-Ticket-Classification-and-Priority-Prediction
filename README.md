@@ -130,7 +130,7 @@ support-ticket-classifier/
 ### Phase 1 — Problem Definition and Data Collection
 **Duration:** 3-5 days
 
-- [ ] Literature review: similar support ticket classification work (2-3 papers/blog posts)
+- [x] Literature review: similar support ticket classification work (2-3 papers/blog posts)
 - [x] Pick a data source:
   - Ready-made "customer support ticket" datasets on Kaggle (English)
   - For Turkish: synthetic data generation (LLM-generated ticket samples) blended with real examples
@@ -150,7 +150,7 @@ support-ticket-classifier/
 ### Phase 2 — EDA and Data Preprocessing
 **Duration:** 4-6 days
 
-- [ ] `01_eda.ipynb`: class distribution, text length distribution, missing values, language distribution
+- [x] `01_eda.ipynb`: class distribution, text length distribution, missing values, language distribution
 - [ ] Text cleaning pipeline: lowercasing, punctuation, stop-words (separate lists for Turkish and English), lemmatization
 - [ ] Class imbalance analysis → choose a strategy:
   - Class weighting (simple, recommended starting point)
