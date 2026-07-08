@@ -1,0 +1,23 @@
+# Virtual Environments
+s_env/
+venv/
+env/
+.env
+
+# Python Caches
+__pycache__/
+*.pyc
+*.pyo
+
+# MLflow Tracking
+mlruns/
+mlflow.db
+*.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data (Optional: ignore large datasets if needed)
+# data/raw/*.csv
+# data/raw/*.jsonl
+# data/processed/*.jsonl
