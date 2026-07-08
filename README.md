@@ -152,12 +152,12 @@ support-ticket-classifier/
 
 - [x] `01_eda.ipynb`: class distribution, text length distribution, missing values, language distribution
 - [x] Text cleaning pipeline: lowercasing, punctuation, stop-words (separate lists for Turkish and English), lemmatization
-- [ ] Class imbalance analysis → choose a strategy:
+- [x] Class imbalance analysis → choose a strategy:
   - Class weighting (simple, recommended starting point)
   - SMOTE / oversampling (use carefully for text, try it on embeddings)
   - Focal loss (during transformer fine-tuning)
-- [ ] Train/validation/test split (stratified, e.g. 70/15/15)
-- [ ] Check for data leakage: tickets from the same customer should not be spread across different splits
+- [x] Train/validation/test split (stratified, e.g. 70/15/15)
+- [x] Check for data leakage: tickets from the same customer should not be spread across different splits
 
 **Output:** Clean, split datasets under `data/processed/`, plus an EDA report with visualizations.
 

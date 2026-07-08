@@ -1,17 +1,17 @@
 """
 combine_datasets.py
 --------------------
-EN/DE (Tobi-Bueck/customer-support-tickets, ham CSV) ile TR sentetik veriyi
-(Kaggle üretimi, JSONL) tek bir birleşik veri setinde toplar.
+Combines the EN/DE dataset (Tobi-Bueck/customer-support-tickets, raw CSV) with the TR synthetic dataset
+(Kaggle generated, JSONL) into a single unified dataset.
 
-Çıktı: data/raw/tickets_combined.jsonl
+Output: data/raw/tickets_combined.jsonl
 
-Uygulanan işlemler:
-  1. TR verisinde `error` alanı dolu (başarısız LLM üretimi) satırları at.
-  2. EN/DE verisinde 20 karakterden kısa `body` içeren (kesilmiş/eksik) satırları at.
-  3. Her iki sette de ham `queue` -> 5 sınıflı `category` eşlemesi uygula.
-  4. EN/DE satırlarına benzersiz `id` üret (TR'de zaten var).
-  5. Kolonları ortak şemaya hizala, tek JSONL dosyasında birleştir.
+Operations applied:
+  1. Drop rows in the TR dataset where the `error` field is populated (failed LLM generation).
+  2. Drop rows in the EN/DE dataset where `body` is less than 20 characters (truncated/missing).
+  3. Apply the raw `queue` -> 5-class `category` mapping to both datasets.
+  4. Generate a unique `id` for EN/DE rows (TR already has one).
+  5. Align columns to a common schema and merge into a single JSONL file.
 """
 
 import argparse
@@ -50,7 +50,7 @@ def load_tr(path: str) -> pd.DataFrame:
     df = pd.DataFrame(rows)
     n_before = len(df)
     df = df[df["error"].isna()].drop(columns=["error"]).reset_index(drop=True)
-    print(f"[TR] {n_before} -> {len(df)} satır (başarısız üretim filtrelendi)")
+    print(f"[TR] {n_before} -> {len(df)} rows (failed generation filtered)")
     return df
 
 
@@ -58,9 +58,9 @@ def load_en_de(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
     n_before = len(df)
     df = df[df["body"].str.len() >= MIN_BODY_LEN].reset_index(drop=True)
-    print(f"[EN/DE] {n_before} -> {len(df)} satır (kısa/kesilmiş body filtrelendi)")
+    print(f"[EN/DE] {n_before} -> {len(df)} rows (short/truncated body filtered)")
 
-    # Benzersiz id üret: {lang}_source_{6haneli sıra no}
+    # Generate unique id: {lang}_source_{6_digit_seq}
     df["id"] = [
         f"{row.language}_source_{i:06d}" for i, row in enumerate(df.itertuples(), start=1)
     ]
@@ -72,7 +72,7 @@ def add_category(df: pd.DataFrame) -> pd.DataFrame:
     unmapped = df["category"].isna().sum()
     if unmapped:
         unknown = df[df["category"].isna()]["queue"].unique().tolist()
-        print(f"[UYARI] {unmapped} satır eşlenemedi: {unknown}")
+        print(f"[WARNING] {unmapped} rows could not be mapped: {unknown}")
     return df
 
 
@@ -95,26 +95,26 @@ def main(tr_path: str, en_de_path: str, output_path: str):
 
     combined = pd.concat([en_de_df, tr_df], ignore_index=True)
 
-    # id benzersizlik son kontrol
+    # Final uniqueness check for ids
     dup = combined["id"].duplicated().sum()
     if dup:
-        print(f"[UYARI] Birleşik veride {dup} duplike id bulundu!")
+        print(f"[WARNING] Found {dup} duplicated ids in the combined dataset!")
 
     combined.to_json(output_path, orient="records", lines=True, force_ascii=False)
-    print(f"\n✅ Birleşik veri seti yazıldı: {output_path}")
-    print(f"Toplam satır: {len(combined)}")
-    print("\nDil dağılımı:")
+    print(f"\n✅ Combined dataset written to: {output_path}")
+    print(f"Total rows: {len(combined)}")
+    print("\nLanguage distribution:")
     print(combined["language"].value_counts())
-    print("\nCategory dağılımı:")
+    print("\nCategory distribution:")
     print(combined["category"].value_counts())
-    print("\nPriority dağılımı:")
+    print("\nPriority distribution:")
     print(combined["priority"].value_counts())
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tr", required=True, help="TR JSONL dosya yolu")
-    parser.add_argument("--en_de", required=True, help="EN/DE CSV dosya yolu")
-    parser.add_argument("--output", required=True, help="Çıktı JSONL dosya yolu")
+    parser.add_argument("--tr", required=True, help="TR JSONL file path")
+    parser.add_argument("--en_de", required=True, help="EN/DE CSV file path")
+    parser.add_argument("--output", required=True, help="Output JSONL file path")
     args = parser.parse_args()
     main(args.tr, args.en_de, args.output)
