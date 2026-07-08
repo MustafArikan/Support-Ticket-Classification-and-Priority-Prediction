@@ -166,11 +166,11 @@ support-ticket-classifier/
 ### Phase 3 — Baseline Modeling
 **Duration:** 4-5 days
 
-- [ ] Build a baseline with TF-IDF + Logistic Regression / SVM (fast, interpretable)
-- [ ] Compare against Naive Bayes
-- [ ] Apply class weighting, compare results
-- [ ] Log every experiment to MLflow (parameters, metrics, confusion matrix artifact)
-- [ ] Note baseline metrics — these answer the "why a transformer, wouldn't a simple model suffice?" question later
+- [x] Build a baseline with TF-IDF + Logistic Regression / SVM (fast, interpretable)
+- [x] Compare against Naive Bayes
+- [x] Apply class weighting, compare results
+- [x] Log every experiment to MLflow (parameters, metrics, confusion matrix artifact)
+- [x] Note baseline metrics — these answer the "why a transformer, wouldn't a simple model suffice?" question later
 
 **Output:** 3-4 baseline experiments logged in MLflow, a comparison table.
 
