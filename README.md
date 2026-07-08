@@ -151,7 +151,7 @@ support-ticket-classifier/
 **Duration:** 4-6 days
 
 - [x] `01_eda.ipynb`: class distribution, text length distribution, missing values, language distribution
-- [ ] Text cleaning pipeline: lowercasing, punctuation, stop-words (separate lists for Turkish and English), lemmatization
+- [x] Text cleaning pipeline: lowercasing, punctuation, stop-words (separate lists for Turkish and English), lemmatization
 - [ ] Class imbalance analysis → choose a strategy:
   - Class weighting (simple, recommended starting point)
   - SMOTE / oversampling (use carefully for text, try it on embeddings)
