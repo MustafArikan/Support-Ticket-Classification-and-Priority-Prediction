@@ -21,3 +21,10 @@ mlflow.db
 # data/raw/*.csv
 # data/raw/*.jsonl
 # data/processed/*.jsonl
+
+# Models and Checkpoints
+models/
+src/models/
+*.pt
+*.safetensors
+*.ckpt
