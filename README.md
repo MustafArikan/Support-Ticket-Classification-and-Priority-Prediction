@@ -181,12 +181,12 @@ support-ticket-classifier/
 ### Phase 4 — Advanced Modeling (Transformer Fine-Tuning)
 **Duration:** 7-10 days
 
-- [ ] Choose BERTurk (`dbmdz/bert-base-turkish-cased`) or a multilingual model (`xlm-roberta-base`)
-- [ ] Build a fine-tuning pipeline with the HuggingFace `Trainer` API
-- [ ] Consider multi-task learning: a shared backbone with two output heads for category + priority (optional, advanced showcase)
-- [ ] Hyperparameter tuning (learning rate, batch size, epoch count) — log every run to MLflow
-- [ ] Add early stopping and learning rate scheduling
-- [ ] Register the best model in the MLflow Model Registry, tag it "staging"
+- [x] Choose BERTurk (`dbmdz/bert-base-turkish-cased`) or a multilingual model (`xlm-roberta-base`)
+- [x] Build a fine-tuning pipeline with the HuggingFace `Trainer` API
+- [x] Consider multi-task learning: a shared backbone with two output heads for category + priority (optional, advanced showcase)
+- [x] Hyperparameter tuning (learning rate, batch size, epoch count) — log every run to MLflow
+- [x] Add early stopping and learning rate scheduling
+- [x] Register the best model in the MLflow Model Registry, tag it "staging"
 
 **Output:** A fine-tuned model, versioned in MLflow, with proven improvement over the baseline.
 
