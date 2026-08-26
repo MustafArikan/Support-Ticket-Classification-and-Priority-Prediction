@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Data and Models
+data/
+models/
+mlruns/
+mlflow.db
+
+# Notebooks
+notebooks/
+
+# IDEs
+.idea/
+.vscode/
+
+# GitHub Actions
+.github/

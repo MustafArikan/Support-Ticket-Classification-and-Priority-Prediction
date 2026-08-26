@@ -1,0 +1,15 @@
+[theme]
+# 10% Vurgu Rengi (Accent) - Butonlar, kaydırıcılar ve öne çıkan öğeler için
+primaryColor = "#4F46E5" 
+
+# 60% Baskın Renk (Dominant) - Ana arka plan için
+backgroundColor = "#F9FAFB" 
+
+# 30% İkincil Renk (Secondary) - Yan panel (sidebar), input arka planları için
+secondaryBackgroundColor = "#E5E7EB" 
+
+# Metin Rengi
+textColor = "#1F2937"
+
+# Yazı Tipi
+font = "sans serif"
