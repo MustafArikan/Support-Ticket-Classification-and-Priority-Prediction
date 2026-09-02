@@ -1,82 +1,232 @@
 import streamlit as st
 import requests
 import json
+import pandas as pd
+from io import BytesIO
 
 # API Configuration
 API_URL = "http://localhost:8000"
 
 st.set_page_config(page_title="Support Ticket Classifier", page_icon="🎫", layout="wide")
 
-# Custom CSS for additional accent touches (10%)
+# --- Language Dictionary ---
+TRANSLATIONS = {
+    "tr": {
+        "title": "🎫 Yapay Zeka Destek Talebi Sınıflandırma",
+        "desc": "Müşteriden gelen destek talebini aşağıya yapıştırın veya bir dosyadan içe aktarın. Yapay zeka modelimiz talebin kategorisini ve önceliğini otomatik belirlesin.",
+        "sidebar_title": "⚙️ Ayarlar & Sistem",
+        "lang_select": "🌐 Dil Seçimi (Language)",
+        "sys_status": "📊 Sistem Kontrolü",
+        "api_ok": "🟢 API Aktif ve Çalışıyor",
+        "api_warn": "🟠 API'de sorun var",
+        "api_err": "🔴 API Kapalı (Çevrimdışı)",
+        "categories": "🏷️ Desteklenen Kategoriler",
+        "cat_list": "1. Teknik Sorun\n2. Fatura & Ödeme\n3. İade Talebi\n4. Hesap Yönetimi\n5. Genel Soru",
+        "priorities": "🚨 Öncelik Seviyeleri",
+        "pri_list": "Düşük, Orta, Yüksek, Kritik",
+        "input_label": "Müşteri Talebi (Açıklama)",
+        "input_ph": "Müşterinin sorununu buraya yazın... (Örn: Dün aldığım ürünü iade etmek istiyorum, kargo kodunu bulamadım.)",
+        "analyze_btn": "🔮 Yapay Zeka ile Analiz Et",
+        "err_len": "Lütfen daha detaylı bir açıklama girin (En az 10 karakter).",
+        "analyzing": "Model tahmin yapıyor...",
+        "success": "Analiz Başarılı!",
+        "cat_lbl": "Kategori",
+        "pri_lbl": "Öncelik (Priority)",
+        "conf_lbl": "Güven Skoru",
+        "exp_title": "🧠 Model Karar Açıklaması",
+        "err_api": "API Hatası",
+        "err_conn": "Bağlantı hatası",
+        "import_btn": "📂 Talep İçe Aktar (.txt, .csv)",
+        "export_btn": "💾 Sonuçları Dışa Aktar",
+    },
+    "en": {
+        "title": "🎫 AI Support Ticket Classification",
+        "desc": "Paste a customer support ticket below or import from a file. Our AI model will automatically determine its category and priority.",
+        "sidebar_title": "⚙️ Settings & System",
+        "lang_select": "🌐 Language (Dil Seçimi)",
+        "sys_status": "📊 System Status",
+        "api_ok": "🟢 API is Online",
+        "api_warn": "🟠 API has issues",
+        "api_err": "🔴 API is Offline",
+        "categories": "🏷️ Supported Categories",
+        "cat_list": "1. Technical Issue\n2. Billing & Payment\n3. Refund Request\n4. Account Management\n5. General Inquiry",
+        "priorities": "🚨 Priority Levels",
+        "pri_list": "Low, Medium, High, Critical",
+        "input_label": "Customer Ticket (Description)",
+        "input_ph": "Type the customer issue here... (e.g., I want to return the product I bought yesterday, but I can't find the shipping code.)",
+        "analyze_btn": "🔮 Analyze with AI",
+        "err_len": "Please enter a more detailed description (at least 10 characters).",
+        "analyzing": "Model is predicting...",
+        "success": "Analysis Successful!",
+        "cat_lbl": "Category",
+        "pri_lbl": "Priority",
+        "conf_lbl": "Confidence Score",
+        "exp_title": "🧠 Model Explanation",
+        "err_api": "API Error",
+        "err_conn": "Connection error",
+        "import_btn": "📂 Import Ticket (.txt, .csv)",
+        "export_btn": "💾 Export Results",
+    }
+}
+
+# --- State Initialization ---
+if "lang" not in st.session_state:
+    st.session_state.lang = "tr"
+if "ticket_input" not in st.session_state:
+    st.session_state.ticket_input = ""
+if "last_result" not in st.session_state:
+    st.session_state.last_result = None
+
+# --- Dynamic CSS (Responsive to Light/Dark) ---
 st.markdown("""
 <style>
-    div.stButton > button:first-child {
-        background-color: #4F46E5;
+    /* Modern Gradient Button */
+    div.stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #6366F1 0%, #4338CA 100%);
         color: white;
-        border-radius: 8px;
-        font-weight: bold;
+        border-radius: 10px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
         border: none;
-        padding: 0.5rem 2rem;
+        padding: 0.6rem 2.5rem;
+        box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.4);
+        transition: all 0.3s ease;
     }
-    div.stButton > button:first-child:hover {
-        background-color: #4338CA;
+    div.stButton > button[kind="primary"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.6);
         color: white;
+    }
+    
+    /* Metrics customization - using generic borders to match light/dark */
+    div[data-testid="stMetric"] {
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    div[data-testid="stMetricValue"] {
+        color: #6366F1;
+        font-weight: 700;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- SIDEBAR (30% Secondary Area) -----------------
+# --- Sidebar ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2082/2082875.png", width=80)
-    st.markdown("## 📊 Sistem Kontrolü")
     
+    # Language Toggle
+    st.markdown(f"### {TRANSLATIONS[st.session_state.lang]['sidebar_title']}")
+    lang_choice = st.radio(
+        TRANSLATIONS[st.session_state.lang]['lang_select'],
+        options=["Türkçe", "English"],
+        index=0 if st.session_state.lang == "tr" else 1,
+        horizontal=True
+    )
+    st.session_state.lang = "tr" if lang_choice == "Türkçe" else "en"
+    t = TRANSLATIONS[st.session_state.lang]
+
+    st.markdown("---")
+    st.markdown(f"### {t['sys_status']}")
     try:
         health_res = requests.get(f"{API_URL}/health", timeout=2)
         if health_res.status_code == 200:
-            st.success("🟢 API Aktif ve Çalışıyor")
+            st.success(t['api_ok'])
         else:
-            st.warning("🟠 API'de sorun var")
+            st.warning(t['api_warn'])
     except:
-        st.error("🔴 API Kapalı (Çevrimdışı)")
+        st.error(t['api_err'])
         
     st.markdown("---")
-    st.markdown("### 🏷️ Desteklenen Kategoriler")
-    st.info("1. Teknik Sorun\n2. Fatura & Ödeme\n3. İade Talebi\n4. Hesap Yönetimi\n5. Genel Soru")
-    
-    st.markdown("### 🚨 Öncelik Seviyeleri")
-    st.warning("Düşük, Orta, Yüksek, Kritik")
+    st.markdown(f"### {t['categories']}")
+    st.info(t['cat_list'])
+    st.markdown(f"### {t['priorities']}")
+    st.warning(t['pri_list'])
 
-# ----------------- MAIN AREA (60% Dominant Area) -----------------
-st.title("🎫 Yapay Zeka Destek Talebi Sınıflandırma")
-st.markdown("Müşteriden gelen destek talebini aşağıya yapıştırın. Yapay zeka modelimiz talebin **kategorisini** ve **önceliğini** otomatik belirlesin.")
+# --- Main Area ---
+st.title(t['title'])
+st.markdown(t['desc'])
 
-ticket_text = st.text_area("Müşteri Talebi (Açıklama)", height=250, placeholder="Müşterinin sorununu buraya yazın... (Örn: Dün aldığım ürünü iade etmek istiyorum, kargo kodunu bulamadım.)")
+# Import Functionality
+uploaded_file = st.file_uploader(t['import_btn'], type=["txt", "csv"])
+if uploaded_file is not None:
+    if uploaded_file.name.endswith('.txt'):
+        st.session_state.ticket_input = uploaded_file.getvalue().decode("utf-8")
+    elif uploaded_file.name.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
+        
+        # Try to find the correct text column
+        text_col = None
+        for col in ["body", "text", "description", "talepler", "mesaj"]:
+            if col in df.columns:
+                text_col = col
+                break
+        
+        if not text_col and len(df.columns) > 0:
+            text_col = df.columns[0] # Fallback to first col
+            
+        if text_col and len(df) > 0:
+            st.session_state.ticket_input = str(df.iloc[0][text_col])
+            st.toast(f"✅ CSV yüklendi! Örnek olarak ilk satır ({text_col}) alındı.", icon='🎉')
 
-# 10% Accent (Button)
-if st.button("🔮 Yapay Zeka ile Analiz Et"):
+ticket_text = st.text_area(
+    t['input_label'], 
+    value=st.session_state.ticket_input, 
+    height=200, 
+    placeholder=t['input_ph']
+)
+
+# Export Functionality Setup (Shown only if there's a result)
+col1, col2 = st.columns([1, 4])
+with col1:
+    analyze_clicked = st.button(t['analyze_btn'], type="primary")
+
+if analyze_clicked:
+    st.session_state.ticket_input = ticket_text # Save state
     if len(ticket_text) < 10:
-        st.error("Lütfen daha detaylı bir açıklama girin (En az 10 karakter).")
+        st.error(t['err_len'])
     else:
-        with st.spinner("Model tahmin yapıyor..."):
+        with st.spinner(t['analyzing']):
             try:
                 response = requests.post(f"{API_URL}/predict", json={"text": ticket_text})
                 if response.status_code == 200:
                     data = response.json()
-                    st.toast('Analiz Başarılı!', icon='✅')
-                    
-                    # Sonuçları göster
-                    col_cat, col_pri, col_conf = st.columns(3)
-                    with col_cat:
-                        st.metric(label="Kategori", value=data.get('category'))
-                    with col_pri:
-                        st.metric(label="Öncelik (Priority)", value=data.get('priority'))
-                    with col_conf:
-                        st.metric(label="Güven Skoru", value=f"%{int(data.get('confidence', 0)*100)}")
-                    
-                    if data.get('explanation'):
-                        st.markdown("### 🧠 Model Karar Açıklaması (SHAP/LIME)")
-                        st.json(data.get('explanation'))
+                    st.session_state.last_result = {
+                        "text": ticket_text,
+                        "category": data.get('category'),
+                        "priority": data.get('priority'),
+                        "confidence": data.get('confidence'),
+                        "explanation": data.get('explanation')
+                    }
+                    st.toast(t['success'], icon='✅')
                 else:
-                    st.error(f"API Hatası: {response.json().get('detail', 'Bilinmeyen hata')}")
+                    st.error(f"{t['err_api']}: {response.json().get('detail', 'Unknown error')}")
             except Exception as e:
-                st.error(f"Bağlantı hatası: {str(e)}. FastAPI sunucusunun çalıştığından emin olun.")
+                st.error(f"{t['err_conn']}: {str(e)}")
+
+# Display Results & Export
+if st.session_state.last_result:
+    res = st.session_state.last_result
+    st.markdown("---")
+    
+    col_cat, col_pri, col_conf = st.columns(3)
+    with col_cat:
+        st.metric(label=t['cat_lbl'], value=res['category'])
+    with col_pri:
+        st.metric(label=t['pri_lbl'], value=res['priority'])
+    with col_conf:
+        st.metric(label=t['conf_lbl'], value=f"%{int(res['confidence']*100)}")
+    
+    if res.get('explanation'):
+        st.markdown(f"### {t['exp_title']}")
+        st.json(res['explanation'])
+
+    # Export Button (Download as JSON)
+    json_result = json.dumps(res, indent=4, ensure_ascii=False)
+    st.download_button(
+        label=t['export_btn'],
+        data=json_result,
+        file_name="ticket_analysis_result.json",
+        mime="application/json"
+    )

@@ -25,40 +25,71 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# MLflow model placeholder (Will be loaded at startup)
-MODEL = None
+import pickle
+import os
+import time
+
+# Basic ML models placeholder
+VECTORIZER = None
+MODELS = None
 
 @app.on_event("startup")
 async def load_model():
-    global MODEL
-    # In a real scenario, this loads from MLflow:
-    # import mlflow
-    # MODEL = mlflow.pyfunc.load_model("models:/ticket_classifier/staging")
-    logger.info("Starting up and loading model... (Mocked for now)")
-    MODEL = "loaded" # Placeholder
+    global VECTORIZER, MODELS
+    logger.info("Starting up and loading basic ML models...")
+    
+    try:
+        models_dir = os.path.join(os.path.dirname(__file__), "../../models/basic_baselines")
+        
+        # Load vectorizer
+        with open(os.path.join(models_dir, "vectorizer.pkl"), "rb") as f:
+            VECTORIZER = pickle.load(f)
+            
+        # Load models dict (contains 'category' and 'priority' models)
+        with open(os.path.join(models_dir, "models.pkl"), "rb") as f:
+            MODELS = pickle.load(f)
+            
+        logger.info("Basic ML models and vectorizer loaded successfully.")
+    except Exception as e:
+        logger.error(f"Failed to load models: {e}")
+        VECTORIZER = None
+        MODELS = None
 
 @app.post("/predict", response_model=TicketResponse)
 async def predict_ticket(request: TicketRequest):
-    if not MODEL:
+    if not VECTORIZER or not MODELS:
         raise HTTPException(status_code=503, detail="Model is currently unavailable.")
     
     start_time = time.time()
     try:
-        # Mocking model inference for now since you are fine-tuning
-        # text = request.text
-        # prediction = MODEL.predict([text])
+        text = request.text
         
-        # Placeholder mock response
-        mock_category = "Technical Issue"
-        mock_priority = "High"
-        mock_confidence = 0.92
+        # Preprocess and vectorize
+        # Simple filling for NA as in training
+        text_clean = text if text else ""
+        X_input = VECTORIZER.transform([text_clean])
+        
+        # Predict Category
+        cat_model = MODELS["category"]
+        cat_pred = cat_model.predict(X_input)[0]
+        cat_probs = cat_model.predict_proba(X_input)[0]
+        cat_conf = max(cat_probs)
+        
+        # Predict Priority
+        pri_model = MODELS["priority"]
+        pri_pred = pri_model.predict(X_input)[0]
+        pri_probs = pri_model.predict_proba(X_input)[0]
+        pri_conf = max(pri_probs)
+        
+        # Calculate combined confidence
+        confidence = (cat_conf + pri_conf) / 2.0
         
         logger.info(f"Prediction successful in {time.time() - start_time:.4f}s")
         
         return TicketResponse(
-            category=mock_category,
-            priority=mock_priority,
-            confidence=mock_confidence
+            category=cat_pred,
+            priority=pri_pred,
+            confidence=float(confidence)
         )
     except Exception as e:
         logger.error(f"Prediction error: {str(e)}")
@@ -66,7 +97,7 @@ async def predict_ticket(request: TicketRequest):
 
 @app.get("/health")
 async def health_check():
-    if not MODEL:
+    if not VECTORIZER or not MODELS:
         raise HTTPException(status_code=503, detail="Service unavailable: Model not loaded")
     return {"status": "healthy", "model_loaded": True}
 
