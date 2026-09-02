@@ -72,14 +72,25 @@ async def predict_ticket(request: TicketRequest):
         # Predict Category
         cat_model = MODELS["category"]
         cat_pred = cat_model.predict(X_input)[0]
-        cat_probs = cat_model.predict_proba(X_input)[0]
-        cat_conf = max(cat_probs)
+        if hasattr(cat_model, "predict_proba"):
+            cat_conf = max(cat_model.predict_proba(X_input)[0])
+        else:
+            # For LinearSVC, use decision_function and softmax
+            import numpy as np
+            scores = cat_model.decision_function(X_input)[0]
+            probs = np.exp(scores) / np.sum(np.exp(scores))
+            cat_conf = max(probs)
         
         # Predict Priority
         pri_model = MODELS["priority"]
         pri_pred = pri_model.predict(X_input)[0]
-        pri_probs = pri_model.predict_proba(X_input)[0]
-        pri_conf = max(pri_probs)
+        if hasattr(pri_model, "predict_proba"):
+            pri_conf = max(pri_model.predict_proba(X_input)[0])
+        else:
+            import numpy as np
+            scores = pri_model.decision_function(X_input)[0]
+            probs = np.exp(scores) / np.sum(np.exp(scores))
+            pri_conf = max(probs)
         
         # Calculate combined confidence
         confidence = (cat_conf + pri_conf) / 2.0
