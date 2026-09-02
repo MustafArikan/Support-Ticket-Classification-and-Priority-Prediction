@@ -148,85 +148,129 @@ with st.sidebar:
 st.title(t['title'])
 st.markdown(t['desc'])
 
-# Import Functionality
-uploaded_file = st.file_uploader(t['import_btn'], type=["txt", "csv"])
-if uploaded_file is not None:
-    if uploaded_file.name.endswith('.txt'):
-        st.session_state.ticket_input = uploaded_file.getvalue().decode("utf-8")
-    elif uploaded_file.name.endswith('.csv'):
-        df = pd.read_csv(uploaded_file)
-        
-        # Try to find the correct text column
-        text_col = None
-        for col in ["body", "text", "description", "talepler", "mesaj"]:
-            if col in df.columns:
-                text_col = col
-                break
-        
-        if not text_col and len(df.columns) > 0:
-            text_col = df.columns[0] # Fallback to first col
-            
-        if text_col and len(df) > 0:
-            st.session_state.ticket_input = str(df.iloc[0][text_col])
-            st.toast(f"✅ CSV yüklendi! Örnek olarak ilk satır ({text_col}) alındı.", icon='🎉')
+# UI Tabs for Single vs Batch Input
+tab1, tab2 = st.tabs(["✍️ Tekli Giriş (Single)", "📂 Toplu Dosya (Batch Upload)"])
 
-ticket_text = st.text_area(
-    t['input_label'], 
-    value=st.session_state.ticket_input, 
-    height=200, 
-    placeholder=t['input_ph']
-)
-
-# Export Functionality Setup (Shown only if there's a result)
-col1, col2 = st.columns([1, 4])
-with col1:
-    analyze_clicked = st.button(t['analyze_btn'], type="primary")
-
-if analyze_clicked:
-    st.session_state.ticket_input = ticket_text # Save state
-    if len(ticket_text) < 10:
-        st.error(t['err_len'])
-    else:
-        with st.spinner(t['analyzing']):
-            try:
-                response = requests.post(f"{API_URL}/predict", json={"text": ticket_text})
-                if response.status_code == 200:
-                    data = response.json()
-                    st.session_state.last_result = {
-                        "text": ticket_text,
-                        "category": data.get('category'),
-                        "priority": data.get('priority'),
-                        "confidence": data.get('confidence'),
-                        "explanation": data.get('explanation')
-                    }
-                    st.toast(t['success'], icon='✅')
-                else:
-                    st.error(f"{t['err_api']}: {response.json().get('detail', 'Unknown error')}")
-            except Exception as e:
-                st.error(f"{t['err_conn']}: {str(e)}")
-
-# Display Results & Export
-if st.session_state.last_result:
-    res = st.session_state.last_result
-    st.markdown("---")
-    
-    col_cat, col_pri, col_conf = st.columns(3)
-    with col_cat:
-        st.metric(label=t['cat_lbl'], value=res['category'])
-    with col_pri:
-        st.metric(label=t['pri_lbl'], value=res['priority'])
-    with col_conf:
-        st.metric(label=t['conf_lbl'], value=f"%{int(res['confidence']*100)}")
-    
-    if res.get('explanation'):
-        st.markdown(f"### {t['exp_title']}")
-        st.json(res['explanation'])
-
-    # Export Button (Download as JSON)
-    json_result = json.dumps(res, indent=4, ensure_ascii=False)
-    st.download_button(
-        label=t['export_btn'],
-        data=json_result,
-        file_name="ticket_analysis_result.json",
-        mime="application/json"
+with tab1:
+    ticket_text = st.text_area(
+        t['input_label'], 
+        value=st.session_state.ticket_input, 
+        height=200, 
+        placeholder=t['input_ph']
     )
+    
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        analyze_clicked = st.button(t['analyze_btn'], type="primary", key="single_analyze")
+    
+    if analyze_clicked:
+        st.session_state.ticket_input = ticket_text # Save state
+        if len(ticket_text) < 10:
+            st.error(t['err_len'])
+        else:
+            with st.spinner(t['analyzing']):
+                try:
+                    response = requests.post(f"{API_URL}/predict", json={"text": ticket_text})
+                    if response.status_code == 200:
+                        data = response.json()
+                        st.session_state.last_result = {
+                            "text": ticket_text,
+                            "category": data.get('category'),
+                            "priority": data.get('priority'),
+                            "confidence": data.get('confidence'),
+                            "explanation": data.get('explanation')
+                        }
+                        st.toast(t['success'], icon='✅')
+                    else:
+                        st.error(f"{t['err_api']}: {response.json().get('detail', 'Unknown error')}")
+                except Exception as e:
+                    st.error(f"{t['err_conn']}: {str(e)}")
+    
+    # Display Results & Export (Single)
+    if st.session_state.last_result:
+        res = st.session_state.last_result
+        st.markdown("---")
+        
+        col_cat, col_pri, col_conf = st.columns(3)
+        with col_cat:
+            st.metric(label=t['cat_lbl'], value=res['category'])
+        with col_pri:
+            st.metric(label=t['pri_lbl'], value=res['priority'])
+        with col_conf:
+            st.metric(label=t['conf_lbl'], value=f"%{int(res['confidence']*100)}")
+        
+        if res.get('explanation'):
+            st.markdown(f"### {t['exp_title']}")
+            st.json(res['explanation'])
+    
+        # Export Button (Download as JSON)
+        json_result = json.dumps(res, indent=4, ensure_ascii=False)
+        st.download_button(
+            label=t['export_btn'],
+            data=json_result,
+            file_name="ticket_analysis_result.json",
+            mime="application/json",
+            key="single_download"
+        )
+
+with tab2:
+    st.markdown("### 📂 Toplu Dosya Analizi (Batch Analysis)")
+    st.info("Yüklediğiniz .csv veya .txt dosyasındaki tüm satırlar sırayla analiz edilecek ve tablo olarak sunulacaktır.")
+    
+    uploaded_file = st.file_uploader(t['import_btn'], type=["txt", "csv"], key="batch_upload")
+    if uploaded_file is not None:
+        texts = []
+        if uploaded_file.name.endswith('.txt'):
+            content = uploaded_file.getvalue().decode("utf-8")
+            texts = [line.strip() for line in content.split('\n') if line.strip()]
+        elif uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
+            text_col = None
+            for col in ["body", "text", "description", "talepler", "mesaj"]:
+                if col in df.columns:
+                    text_col = col
+                    break
+            if not text_col and len(df.columns) > 0:
+                text_col = df.columns[0]
+            if text_col:
+                texts = df[text_col].dropna().astype(str).tolist()
+                
+        if texts:
+            st.success(f"✅ Dosya okundu! Toplam **{len(texts)}** adet kayıt bulundu.")
+            if st.button("🚀 Tümünü Analiz Et (Analyze All)", type="primary", key="batch_analyze"):
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                results = []
+                
+                for i, txt in enumerate(texts):
+                    progress_bar.progress((i + 1) / len(texts))
+                    status_text.text(f"Analiz ediliyor: {i+1} / {len(texts)}")
+                    
+                    try:
+                        res = requests.post(f"{API_URL}/predict", json={"text": txt[:5000]}) # Limit text length for safety
+                        if res.status_code == 200:
+                            data = res.json()
+                            results.append({
+                                "Talep (Metin)": txt,
+                                "Kategori": data.get("category"),
+                                "Öncelik": data.get("priority"),
+                                "Güven": f"%{int(data.get('confidence', 0)*100)}"
+                            })
+                        else:
+                            results.append({"Talep (Metin)": txt, "Kategori": "Hata", "Öncelik": "-", "Güven": "-"})
+                    except:
+                        results.append({"Talep (Metin)": txt, "Kategori": "Bağlantı Hatası", "Öncelik": "-", "Güven": "-"})
+                
+                status_text.text("✅ Analiz tamamlandı!")
+                
+                res_df = pd.DataFrame(results)
+                st.dataframe(res_df, use_container_width=True)
+                
+                csv_export = res_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="💾 Sonuçları İndir (Download CSV)",
+                    data=csv_export,
+                    file_name="batch_analysis_results.csv",
+                    mime="text/csv",
+                    key="batch_download"
+                )
