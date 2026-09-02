@@ -28,3 +28,4 @@ src/models/
 *.pt
 *.safetensors
 *.ckpt
+DATA_SCHEMA.md
