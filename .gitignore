@@ -29,3 +29,5 @@ src/models/
 *.safetensors
 *.ckpt
 DATA_SCHEMA.md
+
+data/raw/*Kopya*.csv
