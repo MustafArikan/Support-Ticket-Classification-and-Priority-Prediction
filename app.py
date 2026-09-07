@@ -7,7 +7,7 @@ from io import BytesIO
 # API Configuration
 API_URL = "http://localhost:8000"
 
-st.set_page_config(page_title="Support Ticket Classifier", page_icon="🎫", layout="wide")
+st.set_page_config(page_title="Support Ticket Classifier", page_icon="📝", layout="centered")
 
 # --- Language Dictionary ---
 TRANSLATIONS = {
@@ -77,45 +77,18 @@ if "ticket_input" not in st.session_state:
 if "last_result" not in st.session_state:
     st.session_state.last_result = None
 
-# --- Dynamic CSS (Responsive to Light/Dark) ---
-st.markdown("""
-<style>
-    /* Modern Gradient Button */
-    div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #6366F1 0%, #4338CA 100%);
-        color: white;
-        border-radius: 10px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        border: none;
-        padding: 0.6rem 2.5rem;
-        box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.4);
-        transition: all 0.3s ease;
-    }
-    div.stButton > button[kind="primary"]:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.6);
-        color: white;
-    }
-    
-    /* Metrics customization - using generic borders to match light/dark */
-    div[data-testid="stMetric"] {
-        border: 1px solid rgba(128, 128, 128, 0.2);
-        padding: 1rem 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-    div[data-testid="stMetricValue"] {
-        color: #6366F1;
-        font-weight: 700;
-    }
-</style>
-""", unsafe_allow_html=True)
+if "theme" not in st.session_state:
+    st.session_state.theme = "light"
 
 # --- Sidebar ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2082/2082875.png", width=80)
     
+    # Theme Toggle
+    if st.button("🌓 Tema (Dark/Light)"):
+        st.session_state.theme = "dark" if st.session_state.theme == "light" else "light"
+        st.rerun()
+
     # Language Toggle
     st.markdown(f"### {TRANSLATIONS[st.session_state.lang]['sidebar_title']}")
     lang_choice = st.radio(
@@ -143,6 +116,72 @@ with st.sidebar:
     st.info(t['cat_list'])
     st.markdown(f"### {t['priorities']}")
     st.warning(t['pri_list'])
+
+# --- Dynamic CSS ---
+theme_css = ""
+if st.session_state.theme == "dark":
+    theme_css = """
+    /* Dark Theme Overrides */
+    .stApp {
+        background-color: #0E1117 !important;
+        color: #FAFAFA !important;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #262730 !important;
+    }
+    [data-testid="stHeader"] {
+        background-color: transparent !important;
+    }
+    h1, h2, h3, p, span, div, label {
+        color: #FAFAFA !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #818CF8 !important;
+    }
+    textarea {
+        background-color: #1E1E1E !important;
+        color: white !important;
+    }
+    """
+
+st.markdown(f"""
+<style>
+    /* Global Styles & Spacing */
+    .block-container {{
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }}
+    /* Modern Gradient Button */
+    div.stButton > button[kind="primary"] {{
+        background: linear-gradient(135deg, #6366F1 0%, #4338CA 100%);
+        color: white !important;
+        border-radius: 8px;
+        font-weight: 600;
+        border: none;
+        padding: 0.5rem 2rem;
+        box-shadow: 0 4px 10px 0 rgba(99, 102, 241, 0.3);
+        transition: all 0.2s ease;
+    }}
+    div.stButton > button[kind="primary"]:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px 0 rgba(99, 102, 241, 0.5);
+    }}
+    
+    /* Metrics customization */
+    div[data-testid="stMetric"] {{
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        padding: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px -1px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }}
+    div[data-testid="stMetricValue"] {{
+        color: #6366F1;
+        font-weight: 700;
+    }}
+    {theme_css}
+</style>
+""", unsafe_allow_html=True)
 
 # --- Main Area ---
 st.title(t['title'])
