@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Send, CheckCircle, AlertCircle, AlertTriangle, Settings, Upload, Activity, Download, Moon, Sun, Globe, ChevronLeft, ChevronRight, Beaker, LayoutDashboard, Box, ExternalLink, Server, Zap } from 'lucide-react';
 import Papa from 'papaparse';
 
-const API_URL = 'http://localhost:8000'; 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'; 
 
 function App() {
   const [text, setText] = useState('');
@@ -39,6 +39,31 @@ function App() {
   }, [history]);
 
   useEffect(() => {
+    if (modalData && !modalData.Explainability && !modalData.isLoadingExplain) {
+      setModalData((prev: any) => ({ ...prev, isLoadingExplain: true }));
+      axios.post(`${API_URL}/api/v1/tickets/predict`, { text: modalData.Text, explain: true })
+        .then(res => {
+          const newExplainability = res.data.explainability;
+          setModalData((prev: any) => prev?.Text === modalData.Text ? { ...prev, Explainability: newExplainability, isLoadingExplain: false } : prev);
+          
+          // Update history if it exists there
+          setHistory(prev => prev.map(item => 
+            item.text === modalData.Text ? { ...item, explainability: newExplainability } : item
+          ));
+          
+          // Update batch results if it exists there
+          setBatchResults(prev => prev.map(item => 
+            item.Text === modalData.Text ? { ...item, Explainability: newExplainability } : item
+          ));
+        })
+        .catch(err => {
+          console.error(err);
+          setModalData((prev: any) => prev?.Text === modalData.Text ? { ...prev, isLoadingExplain: false } : prev);
+        });
+    }
+  }, [modalData?.Text]);
+
+  useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
@@ -60,7 +85,7 @@ function App() {
     setError('');
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/v1/tickets/predict`, { text });
+      const res = await axios.post(`${API_URL}/api/v1/tickets/predict`, { text, explain: true });
       setResult(res.data);
       
       const newEntry = {
@@ -68,6 +93,7 @@ function App() {
         category: res.data.category,
         priority: res.data.priority,
         confidence: res.data.confidence,
+        explainability: res.data.explainability,
         date: new Date().toISOString()
       };
       setHistory(prev => [newEntry, ...prev].slice(0, 15));
@@ -121,7 +147,8 @@ function App() {
             Text: lines[i],
             Category: res.data.category,
             Priority: res.data.priority,
-            Confidence: `${(res.data.confidence * 100).toFixed(1)}%`
+            Confidence: `${(res.data.confidence * 100).toFixed(1)}%`,
+            Explainability: res.data.explainability
           });
           
           const newEntry = {
@@ -129,6 +156,7 @@ function App() {
             category: res.data.category,
             priority: res.data.priority,
             confidence: res.data.confidence,
+            explainability: res.data.explainability,
             date: new Date().toISOString()
           };
           setHistory(prev => [newEntry, ...prev].slice(0, 15));
@@ -382,7 +410,7 @@ function App() {
 
                   {result && (
                     <div className="flex flex-col w-full">
-                    {result.explainability && (
+                    {result.explainability && Object.keys(result.explainability).length > 0 && (
                       <div className="mt-6 pt-4 border-t border-slate-500/20">
                         <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                           <Zap className="w-4 h-4 text-purple-400" /> 
@@ -472,7 +500,7 @@ function App() {
                                 <tr key={i} className={theme === 'dark' ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}>
                                   <td 
                                     className="px-6 py-4 cursor-pointer group"
-                                    onClick={() => setModalData({ Text: r.Text, Category: r.Category, Priority: r.Priority, Confidence: r.Confidence })}
+                                    onClick={() => setModalData({ Text: r.Text, Category: r.Category, Priority: r.Priority, Confidence: r.Confidence, Explainability: r.Explainability })}
                                   >
                                     <div className={`text-sm truncate transition-colors ${theme === 'dark' ? 'group-hover:text-indigo-400' : 'group-hover:text-indigo-600'}`}>
                                       {r.Text}
@@ -529,7 +557,7 @@ function App() {
                             <tr key={i} className={theme === 'dark' ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}>
                               <td 
                                 className="px-6 py-4 cursor-pointer group"
-                                onClick={() => setModalData({ Text: h.text, Category: h.category, Priority: h.priority, Confidence: `${(h.confidence * 100).toFixed(1)}%` })}
+                                onClick={() => setModalData({ Text: h.text, Category: h.category, Priority: h.priority, Confidence: `${(h.confidence * 100).toFixed(1)}%`, Explainability: h.explainability })}
                               >
                                 <div className={`text-sm truncate transition-colors ${theme === 'dark' ? 'group-hover:text-indigo-400' : 'group-hover:text-indigo-600'}`}>
                                   {h.text}
@@ -572,7 +600,12 @@ function App() {
               </p>
             </div>
             
-              {modalData.Explainability && (
+            {modalData.isLoadingExplain ? (
+                <div className={`p-6 border-t flex items-center justify-center gap-2 ${theme === 'dark' ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+                  <Zap className="w-4 h-4 animate-pulse text-purple-400" />
+                  <span className="text-sm font-medium animate-pulse">{lang === 'tr' ? 'Açıklanabilirlik hesaplanıyor...' : 'Calculating explainability...'}</span>
+                </div>
+              ) : modalData.Explainability && Object.keys(modalData.Explainability).length > 0 ? (
                 <div className={`p-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-purple-400" /> 
@@ -593,7 +626,7 @@ function App() {
                     ))}
                   </div>
                 </div>
-              )}
+              ) : null}
 
               <div className={`grid grid-cols-3 divide-x ${theme === 'dark' ? 'divide-slate-700 border-slate-700 bg-slate-900/50' : 'divide-slate-200 border-slate-200 bg-slate-50'} border-t`}>
               <div className="p-4 text-center flex flex-col justify-center">
