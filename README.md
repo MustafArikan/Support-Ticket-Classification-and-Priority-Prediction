@@ -327,30 +327,6 @@ locust -f tests/locustfile.py --host http://localhost:8000
 
 ---
 
-## 15. Project Status & Roadmap
-
-**Shipped:**
-- [x] Multilingual dataset construction (EN/DE/TR, ~32.7K tickets) and schema validation
-- [x] EDA, TF-IDF/Logistic Regression baselines, neural baselines
-- [x] Multi-task mBERT fine-tuning (4 heads) and an XLM-R comparison run
-- [x] SHAP + LIME explainability, merged into a single response field
-- [x] Two FastAPI implementations (simple + Onion Architecture) with input sanitization
-- [x] React dashboard and Streamlit demo, both bilingual (TR/EN)
-- [x] Multi-stage Docker image with a non-root runtime user
-- [x] Docker Compose stack with Prometheus, Grafana, Loki/Promtail, node-exporter, MLflow
-- [x] Kubernetes Deployment/Service/HPA/ConfigMap with probes
-- [x] Statistical drift detection, pytest suite, Locust load test
-- [x] CI pipeline (lint, format, test, Docker build)
-
-**Next up:**
-- [ ] Push the CI-built image to a container registry and wire up `kubectl apply` as a CD step
-- [ ] Surface the already-computed `type` and `queue` predictions through the API response
-- [ ] Consolidate the two parallel FastAPI implementations into one
-- [ ] Move the `/api/v1/system/start` helper behind an auth check (or drop it) before any non-local deployment
-- [ ] Formalize MLflow Model Registry promotion criteria (e.g. promote to "production" only above a macro-F1 threshold)
-
----
-
 ## 16. Known Limitations
 
 - **Two live APIs, one model:** the containerized/tested API (`src/api/main.py`) and the React dashboard's API (`src/api_onion`) are separate FastAPI apps that both load the same checkpoint independently. They haven't been merged yet — pick the one that matches what you're integrating with (see [API Reference](#11-api-reference)).
