@@ -1,387 +1,366 @@
-# Support Ticket Classification and Priority Prediction — Full-Scope MLOps Project Guide
+# 🎫 Support Ticket Classification & Priority Prediction
 
-**Project owner:** Mustafa Arıkan
-**Goal:** Internship project (top grade) + a production-grade NLP/MLOps system that stands out on a CV
+**An end-to-end, multilingual MLOps system that reads a raw customer support ticket and instantly returns its category, priority, and an explanation for the decision — served through a monitored, containerized, auto-scaling API.**
+
+[![Python](https://img.shields.io/badge/Python-3.10-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.103-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-Transformers-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-HPA-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## 1. Overall Architecture
+## 1. What This Project Does
+
+Support teams spend real time manually reading, tagging, and prioritizing every incoming ticket before anyone can act on it. This project automates that first triage step with a fine-tuned multilingual transformer:
+
+1. **Classifies** the ticket into a support **category** (Technical Issue, Billing, Refund, Account Management, General Inquiry)
+2. **Predicts** its **priority** (Low / Medium / High / Critical)
+3. **Explains** the decision with the most influential words (SHAP + LIME)
+4. **Serves** all of the above through a FastAPI service that is Dockerized, deployable on Kubernetes with autoscaling, and observable via Prometheus/Grafana/Loki
+
+> *"Support teams manually triage and prioritize incoming tickets. I automated this with a multilingual NLP model, made its decisions explainable, and shipped it as a production-style system with CI/CD, container orchestration, and live monitoring."*
 
 ![Architecture diagram](architecture_diagram.png)
 
 ---
 
-## 2. Project Summary
+## 2. Table of Contents
 
-Automatically process incoming support requests (email, form, chat text) to:
-1. **Classify category** (e.g. Technical Issue, Billing, Refund, Account, General Inquiry)
-2. **Predict priority** (Low / Medium / High / Critical)
-3. **Explain the decision** (SHAP/LIME)
-
-then turn this into a service that is automatically deployed via CI/CD on Docker + Kubernetes, with full observability.
-
-**Narrative (use this in interviews/presentations):**
-> "Support teams manually triage and prioritize incoming tickets. I automated this process with NLP, made the model's decisions explainable, and built a production system that auto-scales on Kubernetes with continuous performance monitoring."
+- [What This Project Does](#1-what-this-project-does)
+- [Key Features](#3-key-features)
+- [Tech Stack](#4-tech-stack)
+- [Repository Structure](#5-repository-structure)
+- [Dataset](#6-dataset)
+- [Model](#7-model)
+- [Getting Started](#8-getting-started)
+- [Running the Full Stack with Docker Compose](#9-running-the-full-stack-with-docker-compose)
+- [Kubernetes Deployment](#10-kubernetes-deployment)
+- [API Reference](#11-api-reference)
+- [Testing & Load Testing](#12-testing--load-testing)
+- [Monitoring & Observability](#13-monitoring--observability)
+- [CI/CD](#14-cicd)
+- [Project Status & Roadmap](#15-project-status--roadmap)
+- [Known Limitations](#16-known-limitations)
+- [License](#17-license)
 
 ---
 
-## 3. Goals and Success Criteria
+## 3. Key Features
 
-| Dimension | Target |
+- 🌍 **Multilingual out of the box** — trained on English, German, and Turkish tickets with a single shared model
+- 🧠 **Multi-task transformer** — one backbone, four prediction heads (`type`, `queue`, `category`, `priority`)
+- 🔍 **Explainable predictions** — combined SHAP + LIME word-importance scores returned alongside every prediction
+- ⚡ **Two ready-to-use frontends** — a polished React + TypeScript + Tailwind dashboard, and a bilingual (TR/EN) Streamlit demo for quick sharing
+- 📦 **Two API implementations** — a simple, single-file FastAPI service and a refactored **Onion/Clean Architecture** version (domain → application → infrastructure → presentation) for the dashboard
+- 📊 **Full observability stack** — Prometheus metrics (including custom AI business metrics), Grafana dashboards, Loki + Promtail for logs, node-exporter for host metrics
+- 📈 **Statistical drift detection** — Kolmogorov–Smirnov test comparing live traffic against the training distribution
+- 🚀 **Cloud-native deployment** — multi-stage Docker build, Kubernetes Deployment/Service/HPA/ConfigMap manifests with liveness & readiness probes
+- ✅ **CI pipeline** — automatic linting (flake8/black), testing (pytest), and Docker build verification on every push
+
+---
+
+## 4. Tech Stack
+
+| Layer | Technology |
 |---|---|
-| Model performance | Macro F1 ≥ 0.85 for category classification, ≥ 0.75 for priority prediction |
-| Explainability | Top 5 most influential words/features shown for every prediction (SHAP/LIME) |
-| Service | FastAPI with <200ms p95 response time |
-| Container | Docker image <1GB, multi-stage build |
-| Orchestration | Min 2 replicas on K8s, auto-scaling via HPA |
-| CI/CD | Automatic test + build + deploy on every push |
-| Monitoring | Live metrics via Prometheus/Grafana + a simple drift alert |
-| Academic | Report covering every rubric item (problem definition, literature, data, method, results, discussion) |
+| **Model** | PyTorch, HuggingFace `transformers`, `bert-base-multilingual-cased` (multi-task head), `safetensors` |
+| **Explainability** | SHAP, LIME |
+| **Experimentation** | Jupyter notebooks (EDA → baselines → neural baselines → BERT → XLM-R fine-tuning), MLflow |
+| **Backend API** | FastAPI, Pydantic v2, Uvicorn, `prometheus-fastapi-instrumentator` |
+| **Dashboard (primary)** | React 19, TypeScript, Vite, Tailwind CSS, Axios, PapaParse, lucide-react |
+| **Demo UI (secondary)** | Streamlit |
+| **Containers** | Docker (multi-stage build, non-root runtime user), Docker Compose |
+| **Orchestration** | Kubernetes (Deployment, Service, HorizontalPodAutoscaler, ConfigMap) |
+| **Monitoring** | Prometheus, Grafana, Loki, Promtail, node-exporter |
+| **CI/CD** | GitHub Actions (black, flake8, pytest, Docker build) |
+| **Testing** | pytest, `TestClient`, Locust (load testing) |
 
 ---
 
-## 4. Technology Stack
+## 5. Repository Structure
 
 ```
-Language & ML:     Python 3.11, scikit-learn, PyTorch, HuggingFace Transformers
-NLP:               BERTurk / DistilBERT (multilingual), spaCy, NLTK
-Explainability:    SHAP, LIME
-Tracking:          MLflow (experiment tracking + model registry)
-API:               FastAPI, Pydantic, Uvicorn
-Demo:              Streamlit
-Container:         Docker, Docker Compose
-Orchestration:     Kubernetes (Minikube/Kind locally, GKE/AKS optional in cloud)
-CI/CD:             GitHub Actions
-Monitoring:        Prometheus, Grafana
-Database:          PostgreSQL (optional, for prediction history)
-Testing:           pytest, locust (load testing)
-```
-
----
-
-## 5. Folder Structure
-
-```
-support-ticket-classifier/
+Support-Ticket-Classification-and-Priority-Prediction/
+├── app.py                          # Streamlit demo UI (bilingual TR/EN, single + batch analysis)
+├── architecture_diagram.png
+├── docker-compose.yml              # Full stack: api, frontend, prometheus, grafana, loki, promtail, mlflow
+├── docker/
+│   ├── Dockerfile                  # Multi-stage build for the FastAPI service
+│   ├── prometheus.yml
+│   └── grafana/                    # Provisioned datasources + dashboards (FastAPI, nginx, node-exporter…)
+├── k8s/
+│   ├── deployment.yaml             # 2 replicas, resource limits, liveness/readiness probes
+│   ├── service.yaml                # LoadBalancer, port 80 → 8000
+│   ├── hpa.yaml                    # Autoscale 2–10 pods on CPU 70% / memory 80%
+│   └── configmap.yaml
 ├── data/
-│   ├── raw/                  # Raw data
-│   ├── processed/            # Cleaned data
-│   └── data_validation.py    # Data schema validation
+│   ├── raw/                        # Source EN/DE/TR ticket data
+│   ├── processed/                  # train / val / test splits (~32.7K tickets total)
+│   └── data_validation.py
 ├── notebooks/
 │   ├── 01_eda.ipynb
-│   ├── 02_baseline_models.ipynb
-│   └── 03_transformer_finetune.ipynb
+│   ├── 02_baseline_modeling.ipynb
+│   ├── 03_neural_baselines.ipynb
+│   ├── 04_bert_finetuning.ipynb
+│   ├── 05_xlmr_finetuning.ipynb
+│   └── data_generation.ipynb
 ├── src/
-│   ├── data/
-│   │   ├── preprocessing.py
-│   │   └── feature_engineering.py
-│   ├── models/
-│   │   ├── train.py
-│   │   ├── evaluate.py
-│   │   └── explain.py        # SHAP/LIME
-│   ├── api/
-│   │   ├── main.py           # FastAPI app
-│   │   ├── schemas.py        # Pydantic models
-│   │   └── predictor.py
+│   ├── api/                        # Legacy/simple FastAPI service (used by tests & the Docker image)
+│   │   ├── main.py
+│   │   ├── schemas.py
+│   │   └── bert_inference.py
+│   ├── api_onion/                  # Refactored Clean/Onion Architecture API (used by the React dashboard)
+│   │   ├── core/domain/            # Entities (Ticket, PredictionResult) + ports (ModelInterface)
+│   │   ├── core/application/       # TicketService (use case)
+│   │   ├── infrastructure/         # BertModelAdapter, DI container, Prometheus metrics
+│   │   └── presentation/           # FastAPI app + routers (/api/v1/tickets, /api/v1/system)
 │   └── monitoring/
-│       └── drift_check.py
+│       └── drift_detection.py      # KS-test based drift check
+├── frontend/                       # React + TypeScript + Tailwind dashboard
+│   ├── src/App.tsx
+│   └── Dockerfile
 ├── tests/
 │   ├── test_api.py
-│   ├── test_preprocessing.py
-│   └── test_model.py
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── k8s/
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   ├── hpa.yaml
-│   └── configmap.yaml
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yaml
-├── streamlit_app/
-│   └── app.py
-├── mlruns/                    # MLflow local tracking (add to gitignore)
+│   └── locustfile.py
+├── .github/workflows/ci.yml
 ├── requirements.txt
-├── README.md
-└── report/                    # Internship report sources
+└── LICENSE
 ```
 
 ---
 
-## 6. Phase-by-Phase Roadmap
+## 6. Dataset
 
-### Phase 0 — Setup and Environment
-**Duration:** 2-3 days
+- **~32,750 tickets** total — **22,927** train / **4,912** validation / **4,915** test (stratified split)
+- **Languages:** English, German, and Turkish, combined from `en_de_mix_dataset.csv` and `tr_dataset.csv/.jsonl` into `tickets_combined.jsonl`
+- **Label schema** (four attributes per ticket — the model predicts all four, though the API currently surfaces two of them, see [Known Limitations](#16-known-limitations)):
 
-- [x] Create the GitHub repo, set up the folder structure
-- [x] Set up a Python virtual environment / conda env
-- [x] Install Docker Desktop, confirm it works (`docker run hello-world`)
-- [x] Install Minikube or Kind (local K8s cluster)
-- [x] Run MLflow locally, access the UI (`mlflow ui`)
-- [x] Draft `requirements.txt`
-- [x] Write a README.md skeleton (project goal, setup instructions)
+  | Field | Classes |
+  |---|---|
+  | `type` | Change, Incident, Problem, Request |
+  | `queue` | Billing and Payments, Customer Service, General Inquiry, Human Resources, IT Support, Product Support, Returns and Exchanges, Sales and Pre-Sales, Service Outages and Maintenance, Technical Support |
+  | `category` *(exposed via API)* | Account Management, Billing, General Inquiry, Refund, Technical Issue |
+  | `priority` *(exposed via API)* | Critical, High, Low, Medium |
 
-**Output:** A working dev environment, an empty but structured repo.
-
----
-
-### Phase 1 — Problem Definition and Data Collection
-**Duration:** 3-5 days
-
-- [x] Literature review: similar support ticket classification work (2-3 papers/blog posts)
-- [x] Pick a data source:
-  - Ready-made "customer support ticket" datasets on Kaggle (English)
-  - For Turkish: synthetic data generation (LLM-generated ticket samples) blended with real examples
-  - Multilingual approach: combine an English dataset with Turkish synthetic data
-- [x] Finalize the label schema:
-  - Category: Technical Issue, Billing, Refund, Account Management, General Inquiry (5 classes recommended — more adds unnecessary complexity)
-  - Priority: Low, Medium, High, Critical (4 levels)
-- [x] Write a data schema document (column names, types, expected value ranges)
-- [x] Add basic schema validation in `data_validation.py` (e.g. pandera or great_expectations)
-
-**Output:** `data/raw/tickets.csv`, a data dictionary document.
-
-**Note:** The most common mistake here is moving on without checking data quality. Always check the class distribution (is it imbalanced?).
+- **Preprocessing / validation:** `data/data_validation.py` enforces the schema before training; `notebooks/01_eda.ipynb` covers class balance, text length, and language distribution.
 
 ---
 
-### Phase 2 — EDA and Data Preprocessing
-**Duration:** 4-6 days
+## 7. Model
 
-- [x] `01_eda.ipynb`: class distribution, text length distribution, missing values, language distribution
-- [x] Text cleaning pipeline: lowercasing, punctuation, stop-words (separate lists for Turkish and English), lemmatization
-- [x] Class imbalance analysis → choose a strategy:
-  - Class weighting (simple, recommended starting point)
-  - SMOTE / oversampling (use carefully for text, try it on embeddings)
-  - Focal loss (during transformer fine-tuning)
-- [x] Train/validation/test split (stratified, e.g. 70/15/15)
-- [x] Check for data leakage: tickets from the same customer should not be spread across different splits
+The production model (`src/api/bert_inference.py`, `src/api_onion/infrastructure/ai/bert_adapter.py`) is a **multi-task transformer**:
 
-**Output:** Clean, split datasets under `data/processed/`, plus an EDA report with visualizations.
+- **Backbone:** `bert-base-multilingual-cased`, shared across all four tasks
+- **Heads:** one linear classification head per label field (`type`, `queue`, `category`, `priority`), each trained jointly on top of the pooled `[CLS]` representation
+- **Confidence score:** the average softmax confidence of the `category` and `priority` predictions
+- **Explainability:** for every prediction, the service runs both a SHAP `Text` explainer and a LIME `LimeTextExplainer` against the `category` head and merges their top-scoring words into a single `explainability` map, de-duplicating overlapping terms
+- **Checkpoint:** loaded from `models/bert_multitask_checkpoints/checkpoint-<step>/model.safetensors` at API startup (this directory is intentionally **not** committed to the repo — see [Getting Started](#8-getting-started) for how to obtain or train one)
+
+Earlier stages of the pipeline — TF-IDF/Logistic Regression baselines, a neural baseline, and an `xlm-roberta-base` fine-tune — are preserved in `notebooks/02–05` as a comparison trail showing why the multi-task mBERT model was ultimately chosen for deployment.
 
 ---
 
-### Phase 3 — Baseline Modeling
-**Duration:** 4-5 days
+## 8. Getting Started
 
-- [x] Build a baseline with TF-IDF + Logistic Regression / SVM (fast, interpretable)
-- [x] Compare against Naive Bayes
-- [x] Apply class weighting, compare results
-- [x] Log every experiment to MLflow (parameters, metrics, confusion matrix artifact)
-- [x] Note baseline metrics — these answer the "why a transformer, wouldn't a simple model suffice?" question later
+### Prerequisites
 
-**Output:** 3-4 baseline experiments logged in MLflow, a comparison table.
+- Python 3.10+
+- Node.js 18+ (for the React dashboard)
+- Docker & Docker Compose (for the full-stack setup)
+- A trained model checkpoint under `models/bert_multitask_checkpoints/checkpoint-<step>/model.safetensors` (train one via `notebooks/04_bert_finetuning.ipynb`, or place a pretrained checkpoint there yourself)
 
-**Why it matters:** When a reviewer/professor asks "why use a transformer, wouldn't a simple model do?", you'll have numerical evidence ready.
-
----
-
-### Phase 4 — Advanced Modeling (Transformer Fine-Tuning)
-**Duration:** 7-10 days
-
-- [x] Choose BERTurk (`dbmdz/bert-base-turkish-cased`) or a multilingual model (`xlm-roberta-base`)
-- [x] Build a fine-tuning pipeline with the HuggingFace `Trainer` API
-- [x] Consider multi-task learning: a shared backbone with two output heads for category + priority (optional, advanced showcase)
-- [x] Hyperparameter tuning (learning rate, batch size, epoch count) — log every run to MLflow
-- [x] Add early stopping and learning rate scheduling
-- [x] Register the best model in the MLflow Model Registry, tag it "staging"
-
-**Output:** A fine-tuned model, versioned in MLflow, with proven improvement over the baseline.
-
----
-
-### Phase 5 — Explainability
-**Duration:** 3-4 days
-
-- [ ] Use SHAP to extract word-level importance scores for transformer outputs
-- [ ] Use LIME to produce an alternative/comparative explanation
-- [ ] Build a "top 5 influential words" visualization for each prediction
-- [ ] Define the JSON schema for embedding explanations into the API response
-
-**Output:** `src/models/explain.py`, sample explanation visuals.
-
-**CV impact:** This step sets you apart from students who "just train a model." It shows awareness of responsible AI / model transparency.
-
----
-
-### Phase 6 — Model Tracking and Registry (MLflow Consolidation)
-**Duration:** 2-3 days (can run in parallel with Phases 3-4)
-
-- [ ] Verify every experiment is properly logged in MLflow
-- [ ] Define promotion criteria for the registry's "production" stage (e.g. F1 > 0.85)
-- [ ] Document the model versioning strategy
-
-**Output:** A clean, traceable experiment history — directly usable charts for the report.
-
----
-
-### Phase 7 — API Development (FastAPI)
-**Duration:** 4-5 days
-
-- [ ] Define request/response schemas with Pydantic (`schemas.py`)
-- [ ] `/predict` endpoint: take text → return category + priority + confidence score + explanation
-- [ ] `/health` endpoint (for K8s liveness/readiness probes)
-- [ ] `/metrics` endpoint (Prometheus format)
-- [ ] Load the model from the MLflow registry in code (not a hardcoded path)
-- [ ] Handle errors: empty text, overly long text, unsupported language scenarios
-- [ ] Write API tests with `pytest` (at least 8-10 test cases)
-
-**Output:** A locally working, tested FastAPI service.
-
----
-
-### Phase 8 — Containerization (Docker)
-**Duration:** 2-3 days
-
-- [ ] Write a multi-stage Dockerfile (build stage + slim runtime stage)
-- [ ] Add a `.dockerignore` (keep unnecessary files out of the image)
-- [ ] Optimize image size (slim Python base image, prune unnecessary dependencies)
-- [ ] Use `docker-compose.yml` to bring up the API + MLflow + Prometheus together
-- [ ] Test locally in Docker: `docker build`, `docker run`, curl the endpoints
-
-**Output:** A working, optimized Docker image.
-
----
-
-### Phase 9 — CI/CD (GitHub Actions)
-**Duration:** 3-4 days
-
-- [ ] Create `.github/workflows/ci-cd.yaml`:
-  - On push/PR: run linting (flake8/black) → run pytest → test the Docker build
-  - On merge to main: push the Docker image to a registry (Docker Hub or GitHub Container Registry)
-  - (Optional, advanced) Automatically update/apply the K8s manifests
-- [ ] Manage secrets (Docker Hub credentials) via GitHub Secrets
-- [ ] Add a build status badge to the README
-
-**Output:** A pipeline that runs automatically on every commit, build status visible in the README.
-
----
-
-### Phase 10 — Kubernetes Deployment
-**Duration:** 5-7 days
-
-- [ ] `deployment.yaml`: replica count, resource limits/requests, liveness/readiness probes
-- [ ] `service.yaml`: ClusterIP or LoadBalancer
-- [ ] `configmap.yaml`: environment variables (model version, log level)
-- [ ] `hpa.yaml`: CPU/memory-based auto-scaling (min 2, max 5 replicas)
-- [ ] Deploy on Minikube/Kind, verify with `kubectl get pods`, `kubectl logs`
-- [ ] Run a load test (locust) to demonstrate the HPA triggering — a strong moment for a demo
-
-**Output:** A service running and auto-scaling on K8s, plus screenshots/video.
-
----
-
-### Phase 11 — Monitoring and Drift Detection
-**Duration:** 4-5 days
-
-- [ ] Use Prometheus to collect metrics from the API (request count, latency, error rate)
-- [ ] Build a Grafana dashboard: live request volume, latency, model confidence score distribution
-- [ ] Add basic data drift detection: compare the feature distribution of incoming data (e.g. word frequencies, text length) against the training data (Kolmogorov-Smirnov test or a simple statistical comparison)
-- [ ] Log/alert when the drift threshold is exceeded (email integration optional)
-
-**Output:** Grafana dashboard screenshots, a drift detection report.
-
-**CV impact:** This is the strongest differentiator from the 95% of students who only train models — it's a topic that comes up directly in MLOps interviews.
-
----
-
-### Phase 12 — Demo Interface (Streamlit)
-**Duration:** 2-3 days
-
-- [ ] Text input box, prediction result (category + priority + confidence score), SHAP explanation visual
-- [ ] Ability to pick from sample tickets (for a quick demo)
-- [ ] Simple, clean design — critical for the "live demo" moment in your presentation
-
-**Output:** A one-click runnable demo interface.
-
----
-
-### Phase 13 — Report and Presentation
-**Duration:** 5-7 days
-
-- [ ] Report structure (adapt to your internship/academic rubric):
-  1. Introduction and problem definition
-  2. Literature / related work
-  3. Dataset and preprocessing
-  4. Method (baseline → transformer → explainability)
-  5. System architecture (Docker/K8s/CI-CD/monitoring)
-  6. Experimental results (tables, charts, confusion matrix)
-  7. Discussion (limitations, future work)
-  8. Conclusion
-- [ ] Include architecture diagrams in the report (like the one above)
-- [ ] Presentation slides: live demo + architecture visual + key metrics
-- [ ] Polish the GitHub README to portfolio quality (badges, architecture visual, setup steps, demo GIF)
-
-**Output:** Full report, presentation, professional README.
-
----
-
-## 7. Rubric Alignment Checklist
-
-- [ ] Is the problem clearly defined?
-- [ ] Are data quality and preprocessing steps shown?
-- [ ] Are multiple models compared (baseline vs advanced model)?
-- [ ] Are the right metrics chosen and interpreted (not just accuracy, but F1/precision/recall)?
-- [ ] Is the system architecture (deployment) shown?
-- [ ] Are results visualized (charts, tables, confusion matrix)?
-- [ ] Are limitations and future work discussed honestly?
-
----
-
-## 8. Risks and Pitfalls
-
-| Risk | Mitigation |
-|---|---|
-| Data collection takes too long | Cap Phase 1 at 5 days max, start fast with synthetic data |
-| Learning K8s takes time | Practice locally with Minikube, don't treat cloud migration as mandatory |
-| Transformer fine-tuning needs a GPU | Use Google Colab (free T4 GPU) or Kaggle Notebooks |
-| Project scope grows too large, never finishes | Build a "minimum working version" for each phase first, then improve |
-| Explainability gets skipped | Schedule Phase 5 in the same week as Phase 4, don't let it slip |
-
----
-
-## 9. Suggested Timeline (Flexible, Adapt to Internship Duration)
-
-```
-Week 1:      Phase 0 + Phase 1
-Week 2:      Phase 2
-Week 3:      Phase 3
-Week 4-5:    Phase 4
-Week 6:      Phase 5 + Phase 6
-Week 7:      Phase 7
-Week 8:      Phase 8 + Phase 9
-Week 9-10:   Phase 10
-Week 11:     Phase 11
-Week 12:     Phase 12
-Week 13-14:  Phase 13
-```
-
-This table can be compressed or extended based on your actual internship length — share the duration and I can replan it by week.
-
----
-
-## 10. Quick Start Commands
+### 1. Clone and install Python dependencies
 
 ```bash
-# Environment setup
+git clone https://github.com/MustafArikan/Support-Ticket-Classification-and-Priority-Prediction.git
+cd Support-Ticket-Classification-and-Priority-Prediction
+
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install fastapi uvicorn scikit-learn transformers torch mlflow shap lime streamlit pytest
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
-# Start MLflow UI
-mlflow ui --port 5000
-
-# Docker build
-docker build -t support-ticket-classifier:latest -f docker/Dockerfile .
-
-# Start Minikube
-minikube start
-kubectl apply -f k8s/
-kubectl get pods
+pip install -r requirements.txt
 ```
+
+### 2. Run the API
+
+**Option A — the simple/legacy service** (what the Docker image and the test suite use, port `8000`):
+
+```bash
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Option B — the Onion Architecture service** (what the React dashboard talks to, port `8001`):
+
+```bash
+uvicorn src.api_onion.presentation.main:app --host 0.0.0.0 --port 8001 --reload
+```
+
+Either way, check it's alive:
+
+```bash
+curl http://localhost:8000/health
+```
+
+### 3. Run a frontend
+
+**React dashboard** (recommended — batch upload, history, dark mode, service panel):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+By default it points to `http://localhost:8001` (override with a `VITE_API_URL` env var).
+
+**Streamlit demo** (single-file, bilingual, quick to share):
+
+```bash
+streamlit run app.py
+```
+
+Defaults to `http://localhost:8000` for the API.
 
 ---
 
-*This guide is a starting skeleton — come back to it as you progress through each phase for further detail, and for code/architecture support wherever you get stuck.*
+## 9. Running the Full Stack with Docker Compose
+
+`docker-compose.yml` brings up the API, the React frontend, and the entire monitoring stack together:
+
+```bash
+docker compose up --build
+```
+
+| Service | URL | Purpose |
+|---|---|---|
+| `api` | http://localhost:8000 | FastAPI inference service |
+| `frontend` | http://localhost:8085 | React dashboard |
+| `mlflow` | http://localhost:5000 | Experiment tracking / model registry |
+| `prometheus` | http://localhost:9090 | Metrics collection |
+| `grafana` | http://localhost:3000 | Dashboards (FastAPI, AI business metrics, nginx, node-exporter) |
+| `loki` / `promtail` | — | Log aggregation |
+| `node-exporter` | — | Host-level metrics |
+
+---
+
+## 10. Kubernetes Deployment
+
+Manifests live under `k8s/` and assume a local cluster (Minikube/Kind) with the Docker image already built:
+
+```bash
+docker build -t support-ticket-api:latest -f docker/Dockerfile .
+
+minikube start
+kubectl apply -f k8s/
+
+kubectl get pods
+kubectl get hpa
+```
+
+- **Deployment:** 2 replicas, `256Mi`/`250m` requests, `512Mi`/`500m` limits, liveness & readiness probes on `/health`
+- **HPA:** scales 2 → 10 pods on 70% CPU or 80% memory utilization
+- **Service:** `LoadBalancer` exposing port `80` → container port `8000`
+
+To see the HPA trigger, run a load test against the exposed service (see below) while watching `kubectl get hpa -w`.
+
+---
+
+## 11. API Reference
+
+### Legacy service (`src/api/main.py`) — served on `:8000`
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Returns `{"status": "healthy", "model_loaded": true}` |
+| `POST` | `/predict` | Body: `{"text": "..."}` (10–5000 chars) → `{"category", "priority", "confidence", "explanation"}` |
+
+### Onion Architecture service (`src/api_onion`) — served on `:8001`
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Model-load status via the DI container |
+| `GET` | `/metrics` | Prometheus metrics (via `prometheus-fastapi-instrumentator`) |
+| `POST` | `/api/v1/tickets/predict` | Body: `{"text": "..."}` → `{"category", "priority", "confidence", "explainability"}` |
+| `POST` | `/api/v1/system/start` | Local dev convenience — starts `mlflow`/`prometheus`/`grafana` via Docker Compose, or opens the Minikube dashboard |
+
+Every request is validated and sanitized (HTML-escaped, script/`javascript:` patterns stripped, whitespace-only input rejected) before reaching the model.
+
+---
+
+## 12. Testing & Load Testing
+
+```bash
+# Unit / integration tests
+pytest tests/
+
+# Load test against a running API (adjust host as needed)
+locust -f tests/locustfile.py --host http://localhost:8000
+```
+
+`tests/test_api.py` covers the health check, a successful prediction, input-length validation (422 on short text), and XSS-sanitization handling. `tests/locustfile.py` simulates weighted traffic (3:1 prediction-to-health-check ratio) for stress-testing the autoscaler.
+
+---
+
+## 13. Monitoring & Observability
+
+- **Custom AI metrics** (`src/api_onion/infrastructure/monitoring/metrics.py`): a `Counter` of tickets processed per category/priority, and a `Histogram` of model confidence scores
+- **Standard FastAPI metrics** via `prometheus-fastapi-instrumentator`, exposed at `/metrics`
+- **Grafana dashboards** pre-provisioned under `docker/grafana/dashboards/`: FastAPI performance, AI business metrics, nginx, Loki logs, and node-exporter host metrics
+- **Drift detection** (`src/monitoring/drift_detection.py`): a two-sample Kolmogorov–Smirnov test flags a warning when the distribution of a live metric (e.g. text length or confidence) diverges from the training-time reference at `p < 0.05`
+
+---
+
+## 14. CI/CD
+
+`.github/workflows/ci.yml` runs on every push and pull request to `main`:
+
+1. Install dependencies
+2. `black --check` for formatting
+3. `flake8` (syntax errors + complexity/line-length checks)
+4. `pytest` for the test suite
+5. On push to `main`: build the Docker image to verify it compiles cleanly
+
+> Pushing the built image to a registry (Docker Hub / GHCR) is stubbed out in the workflow and is one of the next steps — see [Roadmap](#15-project-status--roadmap).
+
+---
+
+## 15. Project Status & Roadmap
+
+**Shipped:**
+- [x] Multilingual dataset construction (EN/DE/TR, ~32.7K tickets) and schema validation
+- [x] EDA, TF-IDF/Logistic Regression baselines, neural baselines
+- [x] Multi-task mBERT fine-tuning (4 heads) and an XLM-R comparison run
+- [x] SHAP + LIME explainability, merged into a single response field
+- [x] Two FastAPI implementations (simple + Onion Architecture) with input sanitization
+- [x] React dashboard and Streamlit demo, both bilingual (TR/EN)
+- [x] Multi-stage Docker image with a non-root runtime user
+- [x] Docker Compose stack with Prometheus, Grafana, Loki/Promtail, node-exporter, MLflow
+- [x] Kubernetes Deployment/Service/HPA/ConfigMap with probes
+- [x] Statistical drift detection, pytest suite, Locust load test
+- [x] CI pipeline (lint, format, test, Docker build)
+
+**Next up:**
+- [ ] Push the CI-built image to a container registry and wire up `kubectl apply` as a CD step
+- [ ] Surface the already-computed `type` and `queue` predictions through the API response
+- [ ] Consolidate the two parallel FastAPI implementations into one
+- [ ] Move the `/api/v1/system/start` helper behind an auth check (or drop it) before any non-local deployment
+- [ ] Formalize MLflow Model Registry promotion criteria (e.g. promote to "production" only above a macro-F1 threshold)
+
+---
+
+## 16. Known Limitations
+
+- **Two live APIs, one model:** the containerized/tested API (`src/api/main.py`) and the React dashboard's API (`src/api_onion`) are separate FastAPI apps that both load the same checkpoint independently. They haven't been merged yet — pick the one that matches what you're integrating with (see [API Reference](#11-api-reference)).
+- **`type` and `queue` are computed but not returned:** the model has four output heads, but both API responses currently only surface `category` and `priority`.
+- **`/api/v1/system/start` is a local development convenience**, not an authenticated production endpoint — it shells out to `docker compose` / `minikube` based on a whitelisted service name. Don't expose it publicly as-is.
+- **Model checkpoints are not committed** (by design — see `.gitignore`); you need to train one or supply your own before the API can serve predictions.
+- **CI does not yet push to a registry or deploy to Kubernetes** — those steps are manual today (see Roadmap above).
+
+---
+
+## 17. License
+
+Released under the [MIT License](LICENSE) © 2026 Mustafa Arıkan.
