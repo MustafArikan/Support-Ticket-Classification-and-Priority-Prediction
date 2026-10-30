@@ -34,9 +34,23 @@ QUEUE_TO_CATEGORY = {
 
 MIN_BODY_LEN = 20
 COMMON_COLUMNS = [
-    "id", "language", "subject", "body", "answer", "type",
-    "queue", "category", "priority",
-    "tag_1", "tag_2", "tag_3", "tag_4", "tag_5", "tag_6", "tag_7", "tag_8",
+    "id",
+    "language",
+    "subject",
+    "body",
+    "answer",
+    "type",
+    "queue",
+    "category",
+    "priority",
+    "tag_1",
+    "tag_2",
+    "tag_3",
+    "tag_4",
+    "tag_5",
+    "tag_6",
+    "tag_7",
+    "tag_8",
 ]
 
 
@@ -62,7 +76,8 @@ def load_en_de(path: str) -> pd.DataFrame:
 
     # Generate unique id: {lang}_source_{6_digit_seq}
     df["id"] = [
-        f"{row.language}_source_{i:06d}" for i, row in enumerate(df.itertuples(), start=1)
+        f"{row.language}_source_{i:06d}"
+        for i, row in enumerate(df.itertuples(), start=1)
     ]
     return df
 
