@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(
     title="Onion Architecture Ticket API",
-    description="Refactored using Domain, Application, Infrastructure, Presentation layers."
+    description="Refactored using Domain, Application, Infrastructure, Presentation layers.",
 )
 
 app.add_middleware(
@@ -23,15 +23,22 @@ app.add_middleware(
 
 instrumentator = Instrumentator().instrument(app)
 
+
 @app.on_event("startup")
 async def startup_event():
     Container.init()
     instrumentator.expose(app, endpoint="/metrics")
 
+
 app.include_router(ticket_router, prefix="/api/v1/tickets", tags=["Tickets"])
 app.include_router(system_router, prefix="/api/v1/system", tags=["System"])
 
+
 @app.get("/health")
 async def health_check():
-    loaded = getattr(Container.model_adapter, 'is_loaded', False) if Container.model_adapter else False
+    loaded = (
+        getattr(Container.model_adapter, "is_loaded", False)
+        if Container.model_adapter
+        else False
+    )
     return {"status": "healthy", "model_loaded": loaded}

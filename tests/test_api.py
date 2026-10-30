@@ -1,32 +1,66 @@
+import importlib
+from unittest.mock import Mock
+import pytest
 from fastapi.testclient import TestClient
-from src.api.main import app
 
-client = TestClient(app)
+api = importlib.import_module("src.api.main")
 
-def test_health_check():
-    response = client.get("/health")
+
+@pytest.fixture
+def client(monkeypatch):
+    model = Mock()
+    model.predict.return_value = dict(
+        category="Technical Issue", priority="high", confidence=0.9
+    )
+    monkeypatch.setattr(api, "BERT_MODEL", None)
+    monkeypatch.setattr(api, "create_model", Mock(return_value=model))
+    with TestClient(api.app) as test_client:
+        yield test_client, model
+
+
+def test_health_check(client):
+    response = client[0].get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy", "model_loaded": True}
+    assert response.json() == dict(status="healthy", model_loaded=True)
 
-def test_predict_success():
-    payload = {"text": "My internet is not working since morning, please help!"}
-    response = client.post("/predict", json=payload)
+
+def test_predict_success(client):
+    response = client[0].post("/predict", json={"text": "My internet is not working!"})
     assert response.status_code == 200
-    data = response.json()
-    assert "category" in data
-    assert "priority" in data
-    assert "confidence" in data
-    assert data["confidence"] >= 0.0 and data["confidence"] <= 1.0
+    assert response.json()["confidence"] == 0.9
 
-def test_predict_short_text():
-    payload = {"text": "short"}
-    response = client.post("/predict", json=payload)
-    assert response.status_code == 422 # Unprocessable Entity due to validation
 
-def test_predict_xss_sanitization():
-    # Test if script tags are escaped properly by validation
-    payload = {"text": "I have an issue <script>alert('xss')</script> please fix."}
-    response = client.post("/predict", json=payload)
-    assert response.status_code == 200
-    # In a real scenario we'd mock the model to echo back the sanitized text to assert.
-    # But as long as it doesn't crash and returns 200, the validator ran.
+@pytest.mark.parametrize("text", ["short", " " * 12, "x" * 5001])
+def test_invalid_text(client, text):
+    assert client[0].post("/predict", json={"text": text}).status_code == 422
+    client[1].predict.assert_not_called()
+
+
+def test_predict_xss_sanitization(client):
+    text = "Issue <script>alert('xss')</script> please fix."
+    assert client[0].post("/predict", json={"text": text}).status_code == 200
+    cleaned = client[1].predict.call_args.args[0]
+    assert "<script>" not in cleaned
+    assert "&lt;script&gt;" in cleaned
+
+
+def test_model_load_failure(monkeypatch):
+    monkeypatch.setattr(api, "BERT_MODEL", None)
+    monkeypatch.setattr(
+        api, "create_model", Mock(side_effect=OSError("missing checkpoint"))
+    )
+    with TestClient(api.app) as client:
+        assert client.get("/health").status_code == 503
+        assert (
+            client.post(
+                "/predict", json={"text": "My internet is not working!"}
+            ).status_code
+            == 503
+        )
+
+
+def test_prediction_failure(client):
+    client[1].predict.side_effect = RuntimeError("private model error")
+    response = client[0].post("/predict", json={"text": "My internet is not working!"})
+    assert response.status_code == 500
+    assert "private model error" not in response.text
