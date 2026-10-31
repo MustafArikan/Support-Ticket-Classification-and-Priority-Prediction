@@ -31,3 +31,6 @@ src/models/
 DATA_SCHEMA.md
 
 data/raw/*Kopya*.csv
+
+# Local development environment
+.venv/
